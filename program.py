@@ -154,6 +154,7 @@ routine_dict = single_decoding_routine(
     A,
     b,
     n_species,
+    n_states,
     pi,
     kappa,
     scaling_factors,
@@ -164,6 +165,9 @@ probabilities_easy = routine_dict["probabilities"]
 import matplotlib.pyplot as plt
 
 plt.plot(probabilities_easy[0, :])
+
+# Make the y axis only 0.5 to 1
+plt.ylim(0.5, 1)
 plt.title("Conservation Scores")
 plt.xlabel("Base Position")
 plt.ylabel("Posterior Probability")

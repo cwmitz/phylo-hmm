@@ -1,141 +1,35 @@
 import argparse
-import json
 from copy import deepcopy
 
 import numpy as np
 from scipy.linalg import expm
 
 
-def main(tree_path, number_of_nucleotids):
-    alphabet = ["A", "C", "T", "G"]
-    alphabetSize = len(alphabet)
-
-    nbState = 4
-    # transition matrix of the toy gene finder
-    A = np.zeros((nbState, nbState))
-    A[0, 1] = 1
-    A[1, 2] = 1
-    A[2, 3] = 0.011
-    A[2, 0] = 1 - A[2, 3]
-    A[3, 3] = 0.33  # 0.9999  # unrealistic ...
-    A[3, 0] = 1 - A[3, 3]
-
-    # state initial probability
-    b = np.array([0.25, 0.25, 0.26, 0.24])
-    # load the phylogenetic model from JSON
-    # TOOK THIS FROM LOAD_TREE FUNCTION IN TREE_SERIALIZATION.PY
-    tree = {}
-    with open(tree_path) as f:
-        tree = json.load(f)
-        # we want key as integers
-        keys = list(tree.keys())
-        for key in keys:
-            if key.isdigit():
-                tree[int(key)] = tree[key]
-                tree.pop(key, None)
-
-    trees = []
-
-    for j in range(nbState):
-        trees.append(scale_branches_length(tree))
-
-    animalNames = ["dog", "cat", "pig", "cow", "rat", "mouse", "baboon", "human"]
-    """[...], such as the higher average rate of substitution and the greater
-    transition/transversion ratio, in noncoding and third-codon-position sites
-    than in firstand second- codon-position sites[...]"""
-
-    pi = np.zeros((nbState, alphabetSize))
-    # substitution rates for pi 0 and 1 are between 0 and 0.001
-    pi[0] = np.random.rand(alphabetSize) * 0.001
-    pi[1] = np.random.rand(alphabetSize) * 0.001
-    # but between 0 and 0.01 for pi 2 and 3
-    pi[2] = np.random.rand(alphabetSize) * 0.01
-    pi[3] = np.random.rand(alphabetSize) * 0.01
-    pi /= pi.sum(axis=1)[:, None]
-
-    # translation/transversion rate
-    kappa = np.array([2.3, 2.7, 4.3, 5.4])
-
-    strands, states = generate_case(A, b, pi, kappa, trees, number_of_nucleotids)
-    print(strands)
-
-
-def generate_case(A, b, pi, kappa, trees, number_of_nucleotids):
+def generate_case(Qs, A, b, pi, trees, number_of_nucleotids):
     """
     Generate a test case with DNA strands and the list of Ground truth states
-    Args :
-           - A (np array : nbState, nbState) state transition matrix
-           - b (np vector: alphabetSize) initial discrete probability
-               distribution for the states
-            - pi (nparray : nbState, alphabetSize) nucleotids background
-            frequencies, state dependent
-           - kappa (np vector: size nbState) translation transversion rate
-           - trees (list of dicts) list of phylogenetic trees
-           - number_of_nucleotids (int) number of nucleotid in each strand
-    returns :
-           - strands (list of np vector uint8: number_of_nucleotids)
+        Parameters:
+            - Qs: List of substitution rate matrices
+            - A: Matrix of state-transition probabilities
+            - b: Vector of initial-state probabilities
+            - pi: Matrix of nucleotid background frequencies
+            - kappa: Vector of translation/transversion rates
+            - trees: List of scaled phylogenetic trees
+            - number_of_nucleotids: Number of nucleotid in each strand, 1,000,000
+        Returns:
+            - strands (list of np vector uint8: number_of_nucleotids)
                list of the sequence of nucleotids for each taxa
-           - states (np vector uint8: number_of_nucleotids) list of ground
-               truth states for each sie
+            - states (np vector uint8: number_of_nucleotids) list of ground
+               truth states for each size
     """
-    Q = rate_sub_HKY(pi, kappa)
-    # generation
-
     # GT states
     states = generate_gt_state(A, b, number_of_nucleotids)
     # initial values
     X = generate_initial_vector(pi, states)
 
-    strands = evolution(X, states, trees, Q)
+    strands = evolution(X, states, trees, Qs)
 
     return strands, states
-
-
-def scale_branches_length(tree, scale=1):
-    """Given a tree in the dictionnary of list format it returns another
-    tree with randomised branches length
-        Args:
-            - tree (dict): the tree referencing the relationships between nodes
-            and the branches length.
-            - scale (float, optionnal) : scaling factor applied to branch
-            lengths
-        Output:
-            - tree with same shape but scaled branches length
-    """
-    tree_cp = deepcopy(tree)
-
-    def rescale_node(node):
-        children = tree_cp[node]
-        if children:
-            for child in children:
-                new_child = child["node"]
-                rescale_node(new_child)
-                child["branch"] *= scale
-
-    rescale_node(max(tree_cp.keys()))
-    return tree_cp
-
-
-def rate_sub_HKY(pi, kappa):
-    """define the rate substitution matrices according to the HKY model for
-    all states
-    Args :
-            - pi (nparray : nbState, alphabetSize) nucleotids background
-            frequencies, state dependent
-           - kappa (np vector, size nb states) translation/transversion rate
-    returns : Q (np array, nb states x alphabetSize x alphabetSize)
-    the rate substituon matrices for a states
-    """
-    nbState = len(kappa)
-    alphabetSize = pi.shape[1]
-    Q = np.zeros((nbState, alphabetSize, alphabetSize))
-    for j in range(nbState):
-        for i in range(alphabetSize):
-            Q[j, i, :] = pi[j]
-            Q[j, i, (i + 2) % alphabetSize] *= kappa[j]
-            # put in each diagonal a term such that the rows sums to 0
-            Q[j, i, i] -= np.sum(Q[j, i, :])
-    return Q
 
 
 def generate_initial_vector(pi, states):
@@ -254,9 +148,3 @@ def parse_args():
         help="number of genrated nucleotids for each taxa",
     )
     return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = parse_args()
-
-    main(args.tree_path, args.number_of_nucleotids)
