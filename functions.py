@@ -7,6 +7,28 @@ from scipy.linalg import expm
 from data_simulation import generate_case
 
 
+def rate_sub_HKY(pi, kappa, n_states):
+    """
+    Define the rate substitution matrices according to the HKY model for
+    all states
+        Parameters:
+            - pi (nparray : nbState, alphabetSize) nucleotids background
+            frequencies, state dependent
+           - kappa (np vector, size nb states) translation/transversion rate
+    returns : Q (np array, nb states x alphabetSize x alphabetSize)
+    the rate substition matrices for each state
+    """
+    alphabetSize = 4
+    Q = np.zeros((n_states, alphabetSize, alphabetSize))
+    for j in range(n_states):
+        for i in range(alphabetSize):
+            Q[j, i, :] = pi[j]
+            Q[j, i, (i + 2) % alphabetSize] *= kappa
+            # put in each diagonal a term such that the rows sums to 0
+            Q[j, i, i] -= np.sum(Q[j, i, :])
+    return Q
+
+
 def felsensteins(Q, pi, tree, sites):
     """
     Uses Felsenstein's algorithm to compute the likelihood of a given site
@@ -67,71 +89,13 @@ def sum_log(a, axis=0):
         Returns:
             - m + log(sum_i exp(a_i - m)) with m = max(a)
     """
-    # 'a' is a vector
     if a.ndim == 1:
         m = max(a)
         return m + np.log(sum(np.exp(a - m)))
-    # 'a' is a matrix
     else:
         m = np.max(a, axis=axis)
         diff = a - m[:, np.newaxis] if axis == 1 else a - m
         return m + np.log(np.sum(np.exp(diff), axis=axis))
-
-
-def forward(A, b, E, mode):
-    """
-    Forward pass: computes the logarithms of alpha-messages associated to the
-    Sum-Product algorithm or Viterbi. Logarithms are used to avoid numerical errors.
-        Parameters:
-            - A (np.array): matrix of state-transition probabilities (n_states rows, n_states columns)
-            - b (np.array): vector of initial-state probabilities (dimension n_states)
-            - E (np.array): matrix of emission probabilities computed with Felstenstein algorithm (n_states rows, n_sites columns)
-            - mode (str): string to precise how to compute the log alpha-messages. Must be 'max' for Viterbi, 'sum' for Sum-Product
-        Returns:
-            - if 'max', matrix of log alpha-messages and the argmax matrix ; if 'sum', matrix of log alpha-messages
-    """
-    if mode != "max" and mode != "sum":
-        return "Error: Input parameter mode must be 'sum' or 'max'!"
-    else:
-        # Initialization
-        n_states, n_sites = E.shape
-        alpha_log = np.zeros((n_states, n_sites))
-        alpha_log[:, 0] = np.log(b) + np.log(E[:, 0])
-        alpha_argmax = np.zeros(
-            (n_states, n_sites), dtype=int
-        )  # useful for mode 'max' only
-        # Recursion
-        for t in range(1, n_sites):
-            for s in range(n_states):
-                prob = np.log(A[:, s]) + alpha_log[:, t - 1]
-                if mode == "sum":
-                    prob = sum_log(prob)
-                else:
-                    alpha_argmax[s, t] = np.argmax(prob)
-                    prob = max(prob)
-                alpha_log[s, t] = np.log(E[s, t]) + prob
-        return alpha_log if mode == "sum" else [alpha_log, alpha_argmax]
-
-
-def backward(A, E):
-    """
-    Backward pass: computes the logarithms of beta-messages for the Sum-Product
-    algorithm
-        Parameters:
-            - A (np.array): matrix of state-transition probabilities (n_states rows, n_states columns)
-            - E (np.array): matrix of emission probabilities computed with Felstenstein algorithm (n_states rows, n_sites columns)
-        Returns:
-            - matrix of log beta-messages
-    """
-    # Initialization
-    n_states, n_sites = E.shape
-    beta_log = np.zeros((n_states, n_sites))
-    # Recursion
-    for t in range(n_sites - 2, -1, -1):
-        beta_log[:, t] = sum_log(
-            np.log(A) + np.log(E[:, t + 1]) + beta_log[:, t + 1], axis=1
-        )
-    return beta_log
 
 
 def forward_backward(A, b, E):
@@ -146,35 +110,31 @@ def forward_backward(A, b, E):
     """
     n_states, n_sites = E.shape
     post_probas = np.zeros((n_states, n_sites))
-    # Forward and backward procedure to compute the logarithms of alpha and
-    # beta messages
-    alpha_log = forward(A, b, E, "sum")
-    beta_log = backward(A, E)
+    # FORWARD PROCEDURE
+    # Initialization
+    forward_log_prob = np.zeros((n_states, n_sites))
+    forward_log_prob[:, 0] = np.log(b) + np.log(E[:, 0])
+    # Recursion
+    for t in range(1, n_sites):
+        for s in range(n_states):
+            prob = np.log(A[:, s]) + forward_log_prob[:, t - 1]
+            prob = sum_log(prob)
+            forward_log_prob[s, t] = np.log(E[s, t]) + prob
+
+    # BACKWARD PROCUEDURE
+    backward_log_prob = np.zeros((10, 1000000))
+    for t in range(n_sites - 2, -1, -1):
+        backward_log_prob[:, t] = sum_log(
+            np.log(A) + np.log(E[:, t + 1]) + backward_log_prob[:, t + 1], axis=1
+        )
+
     # Posterior probabilities computation using the log method
-    post_probas = np.exp(alpha_log + beta_log - sum_log(alpha_log + beta_log, axis=0))
+    post_probas = np.exp(
+        forward_log_prob
+        + backward_log_prob
+        - sum_log(forward_log_prob + backward_log_prob, axis=0)
+    )
     return post_probas
-
-
-def rate_sub_HKY(pi, kappa, n_states):
-    """
-    Define the rate substitution matrices according to the HKY model for
-    all states
-        Parameters:
-            - pi (nparray : nbState, alphabetSize) nucleotids background
-            frequencies, state dependent
-           - kappa (np vector, size nb states) translation/transversion rate
-    returns : Q (np array, nb states x alphabetSize x alphabetSize)
-    the rate substition matrices for each state
-    """
-    alphabetSize = 4
-    Q = np.zeros((n_states, alphabetSize, alphabetSize))
-    for j in range(n_states):
-        for i in range(alphabetSize):
-            Q[j, i, :] = pi[j]
-            Q[j, i, (i + 2) % alphabetSize] *= kappa
-            # put in each diagonal a term such that the rows sums to 0
-            Q[j, i, i] -= np.sum(Q[j, i, :])
-    return Q
 
 
 def get_probabilities(
@@ -228,16 +188,7 @@ def get_probabilities(
     Qs = rate_sub_HKY(pi, kappa, n_states)
 
     # Generate strands and states
-    strands, states = generate_case(Qs, A, b, pi, trees, number_of_nucleotids)
-
-    # Save generated stands in fasta file format
-    # nucleotide_mapping = {"0": "A", "1": "C", "2": "T", "3": "G"}
-    # nuc_strands = [""] * 9
-    # for i in range(9):
-    #     nuc_strands[i] = "".join([nucleotide_mapping[str(x)] for x in strands[i]])
-    # with open("sequences.fasta", "w") as file:
-    #     for i, sequence in enumerate(nuc_strands):
-    #         file.write(">" + str(i + 1) + "\n" + sequence + "\n")
+    strands, _ = generate_case(Qs, A, b, pi, trees, number_of_nucleotids)
 
     # Process likelihoods with Felsenstein's algorithm
     likelihoods = np.zeros((n_states, number_of_nucleotids))
