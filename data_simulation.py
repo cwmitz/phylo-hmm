@@ -135,16 +135,3 @@ def evolution(X, states, trees, Q):
             return [strand]
 
     return evolve(max(trees[0].keys()), X)
-
-
-def parse_args():
-    parser = argparse.ArgumentParser("Data generation script")
-
-    parser.add_argument("tree_path", help="path of a JSON file encoding a tree")
-    parser.add_argument(
-        "-n",
-        "--number_of_nucleotids",
-        type=int,
-        help="number of genrated nucleotids for each taxa",
-    )
-    return parser.parse_args()

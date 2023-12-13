@@ -146,9 +146,9 @@ pi = np.array(
 # Transitions are interchanges of A and G, or C and T
 # Transversions are remianing possible interchanges
 # Assumes that transitions are twice as likely as transversions for all models
-kappa = 2.0 * np.ones(n_states)
+kappa = 2.0
 
-routine_dict = single_decoding_routine(
+probabilities = single_decoding_routine(
     tree,
     n_nucleotids,
     A,
@@ -159,12 +159,11 @@ routine_dict = single_decoding_routine(
     kappa,
     scaling_factors,
 )
-probabilities_easy = routine_dict["probabilities"]
 
 # Plot the probabilities and store them in a file
 import matplotlib.pyplot as plt
 
-plt.plot(probabilities_easy[0, :])
+plt.plot(probabilities[0, :])
 
 # Make the y axis only 0.5 to 1
 plt.ylim(0.5, 1)

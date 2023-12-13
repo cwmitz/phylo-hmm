@@ -8,30 +8,29 @@ from data_simulation import generate_case
 
 
 # COPIED FROM FELSENSTEIN.PY
-def np_pruning(Q, pi, tree, sites):
+def felsensteins(Q, pi, tree, sites):
     """
-    Computes the likelihood at a given site, for a given instance of this
-    site with respect to a phylogenetic tree defined by Q, pi, tree, using
-    Felsenstein's pruning algorithm.
+    Uses Felsenstein's algorithm to compute the likelihood of a given site
+    for a given instance of this site with respect to a phylogenetic tree
+    defined by Q, pi, tree.
         Parameters:
             - Q (np.matrix): the subsitution rate matrix.
             - pi (np.array): the vector of background frequencies.
             - tree (dict): the tree referencing the relationships between nodes
             and the branches length.
-            - site (np matrix): all the sites
+            - site (matrix): all the sites
         Returns:
             - (np vector): the likelihood.
     """
-    dynamic_probas = {}  # this dictionary will allow to keep records of
-    # posterior probabilities which were already calculated.
+    emmission_probs = {}
 
-    nb_nucleotides, n_species = sites.shape
+    nb_nucleotides = 1000000
     observation = sites.copy()
     x_index = np.arange(nb_nucleotides)  # frequently used variable
 
     def posterior_proba(node):
-        if node in dynamic_probas:
-            return dynamic_probas[node]
+        if node in emmission_probs:
+            return emmission_probs[node]
         else:
             childs = tree[node]
             if childs:
@@ -54,9 +53,9 @@ def np_pruning(Q, pi, tree, sites):
                 return likelihood
 
     for node in tree:
-        dynamic_probas[node] = posterior_proba(node)
+        emmission_probs[node] = posterior_proba(node)
 
-    return dynamic_probas[max(tree.keys())].dot(pi)
+    return emmission_probs[max(tree.keys())].dot(pi)
 
 
 # COPIED FROM VITERBI_SUMPRODUCT.PY
@@ -177,7 +176,7 @@ def rate_sub_HKY(pi, kappa, n_states):
     for j in range(n_states):
         for i in range(alphabetSize):
             Q[j, i, :] = pi[j]
-            Q[j, i, (i + 2) % alphabetSize] *= kappa[j]
+            Q[j, i, (i + 2) % alphabetSize] *= kappa
             # put in each diagonal a term such that the rows sums to 0
             Q[j, i, i] -= np.sum(Q[j, i, :])
     return Q
@@ -237,32 +236,24 @@ def single_decoding_routine(
     strands, states = generate_case(Qs, A, b, pi, trees, number_of_nucleotids)
 
     # Save generated stands in fasta file format
-    nucleotide_mapping = {"0": "A", "1": "C", "2": "T", "3": "G"}
-    nuc_strands = [""] * 9
-    for i in range(9):
-        nuc_strands[i] = "".join([nucleotide_mapping[str(x)] for x in strands[i]])
-    with open("sequences.fasta", "w") as file:
-        for i, sequence in enumerate(nuc_strands):
-            file.write(">" + str(i + 1) + "\n" + sequence + "\n")
+    # nucleotide_mapping = {"0": "A", "1": "C", "2": "T", "3": "G"}
+    # nuc_strands = [""] * 9
+    # for i in range(9):
+    #     nuc_strands[i] = "".join([nucleotide_mapping[str(x)] for x in strands[i]])
+    # with open("sequences.fasta", "w") as file:
+    #     for i, sequence in enumerate(nuc_strands):
+    #         file.write(">" + str(i + 1) + "\n" + sequence + "\n")
 
     # Process likelihoods with Felsenstein's algorithm
-
     likelihoods = np.zeros((n_states, number_of_nucleotids))
+
     sites = np.zeros((number_of_nucleotids, n_species))
     for i in range(n_species):
         sites[:, i] = strands[i]
-    for state in range(n_states):
-        tree = trees[state]
-        Q = Qs[state]
-        p = pi[state]
-        likelihoods[state] = np_pruning(Q, p, tree, sites)
 
-    # VITERBI PARAMETERS
-    S = range(n_states)
+    # Getting emmission probabilities for each site using Felsenstein's algorithm
+    for state in range(n_states):
+        likelihoods[state] = felsensteins(Qs[state], pi[state], trees[state], sites)
 
     probabilities = forward_backward(A, b, likelihoods)
-    return {
-        "real_states": states,
-        "probabilities": probabilities,
-        "decoded_states": np.argmax(probabilities, axis=0),
-    }
+    return probabilities
