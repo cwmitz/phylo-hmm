@@ -197,7 +197,6 @@ def single_decoding_routine(
     """
     Generates a sequence of states and an associated list of strands b
     based on parameters. Then decodes those using a phylogenetic HMM model.
-
         Parameters:
             - tree: Dictionary of true tree topology with branch lengths
             - number_of_nucleotids: 1,000,000
@@ -237,19 +236,14 @@ def single_decoding_routine(
     # Generate strands and states
     strands, states = generate_case(Qs, A, b, pi, trees, number_of_nucleotids)
 
-    # FUNCTION TO CONVERT LIST OF FORM [0,1,2,3, ...] TO STRING OF FORM AGCT...
-    # WHERE 0 CORRESPONDS TO "A", 1 CORRESPONDS TO "C", 2 CORRESPONDS TO "T", AND 3 CORRESPONDS TO "G"
-    # - strands (list of np vector uint8: number_of_nucleotids)
-    # list of the sequence of nucleotids for each taxa
+    # Save generated stands in fasta file format
     nucleotide_mapping = {"0": "A", "1": "C", "2": "T", "3": "G"}
     nuc_strands = [""] * 9
     for i in range(9):
         nuc_strands[i] = "".join([nucleotide_mapping[str(x)] for x in strands[i]])
-
-    # save nuc_strings into a file of fasta format
     with open("sequences.fasta", "w") as file:
         for i, sequence in enumerate(nuc_strands):
-            file.write(">" + str(i + 1) + sequence + "\n")
+            file.write(">" + str(i + 1) + "\n" + sequence + "\n")
 
     # Process likelihoods with Felsenstein's algorithm
 
