@@ -1,6 +1,3 @@
-import argparse
-from copy import deepcopy
-
 import numpy as np
 from scipy.linalg import expm
 
@@ -42,7 +39,7 @@ def generate_initial_vector(pi, states):
         - np.vector with values between 0 and size(b)-1
         follows distribution b
     """
-    nbState, alphabetSize = pi.shape
+    alphabetSize = 4
     nbNucleotids = states.shape[0]
 
     cumsum = np.cumsum(pi, axis=1)
@@ -70,7 +67,6 @@ def generate_gt_state(A, b, nbNucleotids):
     """
     states = np.empty(nbNucleotids, dtype=np.uint8)
 
-    nbState = A.shape[0]
     # the first one is drawn with the law b
     discrete_law = np.cumsum(b)
 
