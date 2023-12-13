@@ -7,7 +7,6 @@ from scipy.linalg import expm
 from data_simulation import generate_case
 
 
-# COPIED FROM FELSENSTEIN.PY
 def felsensteins(Q, pi, tree, sites):
     """
     Uses Felsenstein's algorithm to compute the likelihood of a given site
@@ -58,7 +57,6 @@ def felsensteins(Q, pi, tree, sites):
     return emmission_probs[max(tree.keys())].dot(pi)
 
 
-# COPIED FROM VITERBI_SUMPRODUCT.PY
 def sum_log(a, axis=0):
     """
     Sum when working with logarithms to avoid numerical errors
@@ -80,7 +78,6 @@ def sum_log(a, axis=0):
         return m + np.log(np.sum(np.exp(diff), axis=axis))
 
 
-# COPIED FROM VITERBI_SUMPRODUCT.PY
 def forward(A, b, E, mode):
     """
     Forward pass: computes the logarithms of alpha-messages associated to the
@@ -116,7 +113,6 @@ def forward(A, b, E, mode):
         return alpha_log if mode == "sum" else [alpha_log, alpha_argmax]
 
 
-# COPIED FROM VITERBI_SUMPRODUCT.PY
 def backward(A, E):
     """
     Backward pass: computes the logarithms of beta-messages for the Sum-Product
@@ -138,7 +134,6 @@ def backward(A, E):
     return beta_log
 
 
-# COPIED FROM VITERBI_SUMPRODUCT.PY
 def forward_backward(A, b, E):
     """
     Sum-Product algorithm (forward-backward procedure)
@@ -182,7 +177,7 @@ def rate_sub_HKY(pi, kappa, n_states):
     return Q
 
 
-def single_decoding_routine(
+def get_probabilities(
     tree,
     number_of_nucleotids,
     A,

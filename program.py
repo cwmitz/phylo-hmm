@@ -1,6 +1,6 @@
 import numpy as np
 
-from functions import single_decoding_routine
+from functions import get_probabilities
 
 ## Definition of the parameters
 
@@ -148,7 +148,7 @@ pi = np.array(
 # Assumes that transitions are twice as likely as transversions for all models
 kappa = 2.0
 
-probabilities = single_decoding_routine(
+probabilities = get_probabilities(
     tree,
     n_nucleotids,
     A,
