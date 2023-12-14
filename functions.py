@@ -82,21 +82,19 @@ def felsensteins(Q, pi, tree, sites):
 
 def sum_log(a, axis=0):
     """
-    Sum when working with logarithms to avoid numerical errors
-        Parameters:
-            - a (np.array): vector or matrix
-            - axis (int): axis along which the sum is performed, useful if 'a' is a
-            matrix
-        Returns:
-            - m + log(sum_i exp(a_i - m)) with m = max(a)
+    Compute the log-sum-exp in a numerically stable way.
+
+    Parameters:
+        - a (np.array): Input array, can be a vector or a matrix.
+        - axis (int): Axis along which the sum is performed. Default is 0.
+
+    Returns:
+        - Result of the log-sum-exp operation along the specified axis.
     """
-    if a.ndim == 1:
-        m = max(a)
-        return m + np.log(sum(np.exp(a - m)))
-    else:
-        m = np.max(a, axis=axis)
-        diff = a - m[:, np.newaxis] if axis == 1 else a - m
-        return m + np.log(np.sum(np.exp(diff), axis=axis))
+    m = np.max(a, axis=axis, keepdims=True)
+    exp_diff = np.exp(a - m)
+    sum_exp = np.sum(exp_diff, axis=axis, keepdims=True)
+    return np.squeeze(m + np.log(sum_exp), axis=axis)
 
 
 def forward_backward(A, b, E):
