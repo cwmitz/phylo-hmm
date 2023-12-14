@@ -31,52 +31,53 @@ def rate_sub_HKY(pi, kappa, n_states):
 
 def felsensteins(Q, pi, tree, sites):
     """
-    Uses Felsenstein's algorithm to compute the likelihood of a given site
-    for a given instance of this site with respect to a phylogenetic tree
-    defined by Q, pi, tree.
-        Parameters:
-            - Q (np.matrix): the subsitution rate matrix.
-            - pi (np.array): the vector of background frequencies.
-            - tree (dict): the tree referencing the relationships between nodes
-            and the branches length.
-            - site (matrix): all the sites
-        Returns:
-            - (np vector): the likelihood.
+    Computes the likelihood of a given site using Felsenstein's algorithm
+    with respect to a phylogenetic tree defined by Q, pi, tree.
+    Parameters:
+        - Q (np.matrix): the substitution rate matrix.
+        - pi (np.array): the vector of background frequencies.
+        - tree (dict): the tree referencing the relationships between nodes
+          and the branches length.
+        - sites (matrix): all the sites
+    Returns:
+        - (np vector): the likelihood.
     """
-    emmission_probs = {}
+    likelihood_cache = {}
+    total_nucleotides = 1000000
+    observed_sites = sites.copy()
+    nucleotide_indices = np.arange(total_nucleotides)
 
-    nb_nucleotides = 1000000
-    observation = sites.copy()
-    x_index = np.arange(nb_nucleotides)  # frequently used variable
+    def compute_likelihood(node):
+        if node in likelihood_cache:
+            return likelihood_cache[node]
 
-    def posterior_proba(node):
-        if node in emmission_probs:
-            return emmission_probs[node]
-        else:
-            childs = tree[node]
-            if childs:
-                left_child = childs[0]["node"]
-                right_child = childs[1]["node"]
-                post_proba_left = posterior_proba(left_child)
-                post_proba_right = posterior_proba(right_child)
-                prob_matrix_left = expm(childs[0]["branch"] * Q)
-                prob_matrix_right = expm(childs[1]["branch"] * Q)
-                # import pdb; pdb.set_trace()
-                left_likelihood = prob_matrix_left.dot(post_proba_left.T)
-                right_likelihood = prob_matrix_right.dot(post_proba_right.T)
-                return (left_likelihood * right_likelihood).T
-            else:
-                # in this case the node is a leaf
-                likelihood = np.zeros((nb_nucleotides, 4))
-                likelihood[
-                    x_index, np.floor(observation[:, node - 1]).astype("int")
-                ] = 1
-                return likelihood
+        node_children = tree.get(node, [])
+        if not node_children:
+            # Node is a leaf
+            leaf_likelihood = np.zeros((total_nucleotides, 4))
+            leaf_likelihood[nucleotide_indices, np.floor(
+                observed_sites[:, node - 1]).astype(int)] = 1
+            return leaf_likelihood
 
+        # Compute likelihood for non-leaf nodes
+        left, right = node_children
+        left_likelihood = compute_likelihood(left["node"])
+        right_likelihood = compute_likelihood(right["node"])
+
+        transition_matrix_left = expm(left["branch"] * Q)
+        transition_matrix_right = expm(right["branch"] * Q)
+
+        combined_left = transition_matrix_left @ left_likelihood.T
+        combined_right = transition_matrix_right @ right_likelihood.T
+
+        return (combined_left * combined_right).T
+
+    # Compute likelihood for each node in the tree
     for node in tree:
-        emmission_probs[node] = posterior_proba(node)
+        likelihood_cache[node] = compute_likelihood(node)
 
-    return emmission_probs[max(tree.keys())].dot(pi)
+    root_likelihood = likelihood_cache[max(tree.keys())]
+    return np.dot(root_likelihood, pi)
 
 
 def sum_log(a, axis=0):
@@ -199,7 +200,8 @@ def get_probabilities(
 
     # Getting emmission probabilities for each site using Felsenstein's algorithm
     for state in range(n_states):
-        likelihoods[state] = felsensteins(Qs[state], pi[state], trees[state], sites)
+        likelihoods[state] = felsensteins(
+            Qs[state], pi[state], trees[state], sites)
 
     probabilities = forward_backward(A, b, likelihoods)
     return probabilities
