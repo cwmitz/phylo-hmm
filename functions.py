@@ -1,4 +1,3 @@
-import json
 from copy import deepcopy
 
 import numpy as np
@@ -7,6 +6,7 @@ from scipy.linalg import expm
 from data_simulation import generate_case
 
 
+# KEEP AS NUMPY ARRAYS
 def rate_sub_HKY(pi, kappa, n_states):
     """
     Define the rate substitution matrices according to the HKY model for
