@@ -82,14 +82,13 @@ def felsensteins(Q, pi, tree, sites):
 
 def sum_log(a, axis=0):
     """
-    Compute the log-sum-exp in a numerically stable way.
-
-    Parameters:
-        - a (np.array): Input array, can be a vector or a matrix.
-        - axis (int): Axis along which the sum is performed. Default is 0.
-
-    Returns:
-        - Result of the log-sum-exp operation along the specified axis.
+    Sum when working with logarithms to avoid numerical errors
+        Parameters:
+            - a (np.array): vector or matrix
+            - axis (int): axis along which the sum is performed, useful if 'a' is a
+            matrix
+        Returns:
+            - m + log(sum_i exp(a_i - m)) with m = max(a)
     """
     m = np.max(a, axis=axis, keepdims=True)
     exp_diff = np.exp(a - m)
@@ -108,31 +107,29 @@ def forward_backward(A, b, E):
             - matrix of posterior probabilities
     """
     n_states, n_sites = E.shape
-    post_probas = np.zeros((n_states, n_sites))
-    # FORWARD PROCEDURE
-    # Initialization
     forward_log_prob = np.zeros((n_states, n_sites))
+    backward_log_prob = np.zeros((n_states, n_sites))
+
+    # FORWARD PROCEDURE
     forward_log_prob[:, 0] = np.log(b) + np.log(E[:, 0])
-    # Recursion
     for t in range(1, n_sites):
         for s in range(n_states):
             prob = np.log(A[:, s]) + forward_log_prob[:, t - 1]
-            prob = sum_log(prob)
-            forward_log_prob[s, t] = np.log(E[s, t]) + prob
+            forward_log_prob[s, t] = np.log(E[s, t]) + sum_log(prob)
 
-    # BACKWARD PROCUEDURE
-    backward_log_prob = np.zeros((10, 1000000))
+    # BACKWARD PROCEDURE
+    backward_log_prob[:, -1] = 0  # log(1) = 0
     for t in range(n_sites - 2, -1, -1):
-        backward_log_prob[:, t] = sum_log(
-            np.log(A) + np.log(E[:, t + 1]) + backward_log_prob[:, t + 1], axis=1
-        )
+        for s in range(n_states):
+            prob = np.log(A[s, :]) + np.log(E[:, t + 1]) + \
+                backward_log_prob[:, t + 1]
+            backward_log_prob[s, t] = sum_log(prob)
 
-    # Posterior probabilities computation using the log method
-    post_probas = np.exp(
-        forward_log_prob
-        + backward_log_prob
-        - sum_log(forward_log_prob + backward_log_prob, axis=0)
-    )
+    # POSTERIOR PROBABILITIES
+    log_post_probas = forward_log_prob + backward_log_prob
+    log_post_probas -= sum_log(log_post_probas, axis=0)
+    post_probas = np.exp(log_post_probas)
+
     return post_probas
 
 
