@@ -186,6 +186,15 @@ def get_probabilities(
     # Generate strands and states
     strands, _ = generate_case(Qs, A, b, pi, trees, number_of_nucleotids)
 
+    # Save generated stands in fasta file format
+    nucleotide_mapping = {"0": "A", "1": "C", "2": "T", "3": "G"}
+    nuc_strands = [""] * 9
+    for i in range(9):
+        nuc_strands[i] = "".join([nucleotide_mapping[str(x)] for x in strands[i]])
+    with open("sequences.fasta", "w") as file:
+        for i, sequence in enumerate(nuc_strands):
+            file.write(">" + str(i + 1) + "\n" + sequence + "\n")
+
     # Process likelihoods with Felsenstein's algorithm
     likelihoods = np.zeros((n_states, number_of_nucleotids))
 
