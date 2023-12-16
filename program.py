@@ -159,6 +159,9 @@ probabilities = get_probabilities(
     kappa,
     scaling_factors,
 )
+# store the proabilities in a new file
+np.savetxt("probabilities.txt", probabilities)
+
 
 # Plot the probabilities and store them in a file
 import matplotlib.pyplot as plt
