@@ -6,7 +6,11 @@ from scipy.linalg import expm
 from data_simulation import generate_case
 
 
-# KEEP AS NUMPY ARRAYS
+# Adopted from https://github.com/zaccharieramzi/phylo-hmm/ for use in data simulation
+# confirmed against:
+    # Combining Phylogenetic and Hidden Markov Models in Biosequence Analysis
+    # Adam Siepel and David Haussler
+    # Journal of Computational Biology 2004 11:2-3, 413-428
 def rate_sub_HKY(pi, kappa, n_states):
     """
     Define the rate substitution matrices according to the HKY model for
@@ -34,13 +38,12 @@ def felsensteins(Q, pi, tree, sites):
     Computes the likelihood of a given site using Felsenstein's algorithm
     with respect to a phylogenetic tree defined by Q, pi, tree.
     Parameters:
-        - Q (np.matrix): the substitution rate matrix.
-        - pi (np.array): the vector of background frequencies.
-        - tree (dict): the tree referencing the relationships between nodes
-          and the branches length.
-        - sites (matrix): all the sites
+        - Q: the substitution rate matrix
+        - pi: the vector of background frequencies
+        - tree: the phylogenetic tree 
+        - sites: DNA sequences
     Returns:
-        - (np vector): the likelihood.
+        - the likelihood
     """
     likelihood_cache = {}
     total_nucleotides = 1000000
@@ -82,11 +85,10 @@ def felsensteins(Q, pi, tree, sites):
 
 def sum_log(a, axis=0):
     """
-    Sum when working with logarithms to avoid numerical errors
+    Sum log to avoid numerical errors
         Parameters:
-            - a (np.array): vector or matrix
-            - axis (int): axis along which the sum is performed, useful if 'a' is a
-            matrix
+            - a: vector or matrix
+            - axis: axis along which the sum is performed
         Returns:
             - m + log(sum_i exp(a_i - m)) with m = max(a)
     """
@@ -100,11 +102,11 @@ def forward_backward(A, b, E):
     """
     Sum-Product algorithm (forward-backward procedure)
         Parameters:
-            - A (np.array): matrix of state-transition probabilities (n_states rows, n_states columns)
-            - b (np.array): vector of initial-state probabilities (dimension n_states)
-            - E (np.array): matrix of emission probabilities computed with Felstenstein algorithm (n_states rows, n_sites columns)
+            - A: state-transition probabilities 
+            - b: initial-state probabilities 
+            - E: emission probabilities via Felstensteins 
         Returns:
-            - matrix of posterior probabilities
+            - posterior probabilities
     """
     n_states, n_sites = E.shape
     forward_log_prob = np.zeros((n_states, n_sites))

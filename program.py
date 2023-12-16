@@ -48,6 +48,10 @@ b = np.ones(n_states) / n_states
 # Combining Phylogenetic and Hidden Markov Models in Biosequence Analysis
 # Adam Siepel and David Haussler
 # Journal of Computational Biology 2004 11:2-3, 413-428
+# Dictionary form of newick tree: 
+#   "(((dog:0.1077),(cat:0.0852)):0.0567,((pig:0.115),(cow:0.1228)):0.0392):0.0269,
+#   (((mouse:0.0847),(rat:0.0767)):0.322,((baboon:0.0331),((chimp:0.0053),(human:
+#   0.0048):0.019):0.0939):0.0299);"
 tree = {
     1: [],
     2: [],
@@ -76,6 +80,7 @@ scaling_factors = [0.6, 1.1, 1.8, 2.2, 2.5, 3.0, 3.2, 3.5, 3.9, 4.3]
 
 # Background (eqilibrium) frequencies for each phylogenetic model-
 # pi_(k,j) =  frequency of nucleotid j under state k
+# Derived from repo:  https://github.com/zaccharieramzi/phylo-hmm/
 pi = np.array(
     [
         [
@@ -146,6 +151,7 @@ pi = np.array(
 # Transitions are interchanges of A and G, or C and T
 # Transversions are remianing possible interchanges
 # Assumes that transitions are twice as likely as transversions for all models
+# Derived according to: https://rosalind.info/glossary/transitiontransversion-ratio/#:~:text=The%20transition%2Ftransversion%20ratio%20between,mutation%20in%20the%20translated%20protein.
 kappa = 2.0
 
 probabilities = get_probabilities(
