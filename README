@@ -1,0 +1,10 @@
+Title: Re-implementing Phylogenetic Hidden Markov Models
+Authors: Charles Mitz, Jackie Wells, Christina Unkenholz, Henry Koontz
+
+Instructions: Download zip or clone repository and ensure the running environment
+has the necessary requirements located in requirements.txt. Run program.py file. 
+
+Expected Behavior: Be aware it will likely take about a minute for experiment to 
+complete. Upon completion, the aligned sequences will be saved in a sequences.fasta 
+file, and probabilities.png will store the graphed posterior probabilities across 
+the bases. 
